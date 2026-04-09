@@ -19,7 +19,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from configs import SHIFT_CONFIGS
-from excel_handler import read_excel, write_excel
+from excel_handler import read_csv, read_excel, write_excel
 from solver import generate_shift
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -112,6 +112,7 @@ class GenerateRequest(BaseModel):
     closed_flags: List[bool]
     max_total_duties: int = 6
     min_gap: int = 2
+    random_seed: int = 0
 
 
 class DownloadRequest(BaseModel):
@@ -200,12 +201,15 @@ async def upload_excel(request: Request, shift_type: str, file: UploadFile = Fil
     require_auth(request)
     get_config(shift_type)  # タイプ検証
 
-    if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(status_code=400, detail="xlsx形式のファイルをアップロードしてください")
+    if not file.filename.endswith((".xlsx", ".xls", ".csv")):
+        raise HTTPException(status_code=400, detail="xlsx または csv 形式のファイルをアップロードしてください")
 
     try:
         contents = await file.read()
-        data = read_excel(contents)
+        if file.filename.endswith(".csv"):
+            data = read_csv(contents)
+        else:
+            data = read_excel(contents)
     except Exception:
         raise HTTPException(status_code=400, detail="ファイルの読み込みに失敗しました。フォーマットを確認してください。")
 
@@ -233,6 +237,7 @@ async def generate(http_request: Request, shift_type: str, request: GenerateRequ
             total_limit=request.max_total_duties,
             min_gap=request.min_gap,
             config=config,
+            random_seed=request.random_seed,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"シフト生成中にエラーが発生しました: {str(e)}")

@@ -48,7 +48,7 @@
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-xs font-medium text-gray-600">最大試行回数</label>
-                    <input type="number" id="maxRetries" value="200" min="1" max="200"
+                    <input type="number" id="maxRetries" value="10" min="1" max="50"
                         class="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                 </div>
                 <div class="flex items-center gap-2">
@@ -112,8 +112,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
                         <p class="text-sm text-gray-600">クリックまたはドラッグ&ドロップでファイルを選択</p>
-                        <p class="text-xs text-gray-400 mt-0.5">xlsx形式のみ対応</p>
-                        <input type="file" id="fileInput-icu" accept=".xlsx,.xls" class="hidden">
+                        <p class="text-xs text-gray-400 mt-0.5">xlsx / csv 形式に対応</p>
+                        <input type="file" id="fileInput-icu" accept=".xlsx,.xls,.csv" class="hidden">
                     </div>
                     <div id="fileInfo-icu" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-600">
                         <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -200,8 +200,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
                         <p class="text-sm text-gray-600">クリックまたはドラッグ&ドロップでファイルを選択</p>
-                        <p class="text-xs text-gray-400 mt-0.5">xlsx形式のみ対応</p>
-                        <input type="file" id="fileInput-junya" accept=".xlsx,.xls" class="hidden">
+                        <p class="text-xs text-gray-400 mt-0.5">xlsx / csv 形式に対応</p>
+                        <input type="file" id="fileInput-junya" accept=".xlsx,.xls,.csv" class="hidden">
                     </div>
                     <div id="fileInfo-junya" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-600">
                         <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -299,8 +299,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
                         </svg>
                         <p class="text-sm text-gray-600">クリックまたはドラッグ&ドロップでファイルを選択</p>
-                        <p class="text-xs text-gray-400 mt-0.5">xlsx形式のみ対応</p>
-                        <input type="file" id="fileInput-resident" accept=".xlsx,.xls" class="hidden">
+                        <p class="text-xs text-gray-400 mt-0.5">xlsx / csv 形式に対応</p>
+                        <input type="file" id="fileInput-resident" accept=".xlsx,.xls,.csv" class="hidden">
                     </div>
                     <div id="fileInfo-resident" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-600">
                         <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

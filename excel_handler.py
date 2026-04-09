@@ -8,7 +8,8 @@
 ※ 休診日はUIのプルダウンで設定（Excel内に休診日行なし）
 """
 
-from io import BytesIO
+import csv
+from io import BytesIO, StringIO
 from typing import Any, Dict, List
 
 from openpyxl import Workbook, load_workbook
@@ -108,6 +109,93 @@ def read_excel(file_bytes: bytes) -> Dict[str, Any]:
         "dates": dates,
         "schedule": schedule,
         "closed_days": [],  # 休診日はUIで管理
+    }
+
+
+def read_csv(file_bytes: bytes) -> Dict[str, Any]:
+    """
+    CSVファイルを読み込んでJSON用の辞書を返す
+
+    CSVフォーマット（Excelと同一レイアウト）:
+      行1: ヘッダー（A: 日直回数上限, B: 当直回数上限, C: 職員番号, D以降: 日付）
+      行2以降: 職員データ
+
+    Returns:
+        read_excel() と同じ辞書構造
+    """
+    # utf-8 → cp932 の順でデコードを試みる
+    text: str = ""
+    for encoding in ("utf-8-sig", "utf-8", "cp932"):
+        try:
+            text = file_bytes.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+
+    reader = csv.reader(StringIO(text))
+    rows = list(reader)
+
+    if not rows:
+        return {"staff_ids": [], "day_limits": [], "night_limits": [], "dates": [], "schedule": [], "closed_days": []}
+
+    # 行1のD列（index 3）以降から日付を読む
+    header = rows[0]
+    dates: List[Any] = []
+    for col in range(3, len(header)):
+        val = header[col].strip()
+        if not val:
+            break
+        try:
+            day_num = int(val)
+            if 1 <= day_num <= 31:
+                dates.append(day_num)
+            else:
+                break
+        except (ValueError, TypeError):
+            break
+
+    num_date_cols = len(dates)
+
+    # 行2以降: 職員データ
+    staff_ids: List[str] = []
+    day_limits: List[int] = []
+    night_limits: List[int] = []
+    schedule: List[List[str]] = []
+
+    for row in rows[1:]:
+        if len(row) < 3:
+            continue
+        staff_id = row[2].strip()
+        if not staff_id:
+            continue
+
+        try:
+            day_lim = int(row[0].strip()) if row[0].strip() else 0
+        except (ValueError, TypeError):
+            day_lim = 0
+
+        try:
+            night_lim = int(row[1].strip()) if row[1].strip() else 0
+        except (ValueError, TypeError):
+            night_lim = 0
+
+        staff_ids.append(staff_id)
+        day_limits.append(day_lim)
+        night_limits.append(night_lim)
+
+        row_data: List[str] = []
+        for col in range(3, 3 + num_date_cols):
+            val = row[col].strip() if col < len(row) else ""
+            row_data.append(val)
+        schedule.append(row_data)
+
+    return {
+        "staff_ids": staff_ids,
+        "day_limits": day_limits,
+        "night_limits": night_limits,
+        "dates": dates,
+        "schedule": schedule,
+        "closed_days": [],
     }
 
 

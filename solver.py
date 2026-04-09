@@ -36,6 +36,7 @@ def generate_shift(
     total_limit: int = 6,
     min_gap: int = 2,
     config: Optional["ShiftConfig"] = None,
+    random_seed: int = 0,
 ) -> Tuple[List[List[str]], List[str], bool]:
     """シフト生成のエントリーポイント。(schedule, warnings, emergency_used) を返す"""
 
@@ -180,6 +181,7 @@ def generate_shift(
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 30.0
     solver.parameters.num_workers = 4
+    solver.parameters.random_seed = random_seed
 
     status = solver.solve(model)
 
@@ -209,6 +211,7 @@ def generate_shift(
                 total_limit=total_limit,
                 min_gap=min_gap - 1,
                 config=config,
+                random_seed=random_seed,
             )
             return sched_relaxed, warnings_relaxed, True
 

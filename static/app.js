@@ -159,8 +159,8 @@ for (const type of Object.keys(SHIFT_TYPES)) {
 // =========================================================
 
 async function handleFileUpload(type, file) {
-    if (!file.name.match(/\.xlsx?$/i)) {
-        alert("xlsx形式のファイルを選択してください");
+    if (!file.name.match(/\.(xlsx?|csv)$/i)) {
+        alert("xlsx または csv 形式のファイルを選択してください");
         return;
     }
 
@@ -244,6 +244,7 @@ async function generateShift(type) {
                 closed_flags: s.closedFlags,
                 max_total_duties: maxTotalDuties,
                 min_gap: minGap,
+                random_seed: attempt,
             }),
         });
         if (!res.ok) {
