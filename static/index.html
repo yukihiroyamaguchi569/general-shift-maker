@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>当直表 一括作成システム</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="min-h-screen">
+    <div class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- ヘッダー -->
+        <div class="mb-6 header-bar rounded-xl px-6 py-5 shadow-lg relative overflow-hidden">
+            <svg class="header-decoration" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="100" r="80" stroke="rgba(255,255,255,0.08)" stroke-width="2" fill="none"/>
+                <circle cx="100" cy="100" r="50" stroke="rgba(255,255,255,0.05)" stroke-width="1.5" fill="none"/>
+                <circle cx="100" cy="100" r="20" stroke="rgba(255,255,255,0.03)" stroke-width="1" fill="none"/>
+            </svg>
+            <div class="relative z-10 flex items-start justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-white tracking-wide">当直表 一括作成システム</h1>
+                    <p class="text-sm text-blue-200 mt-1">ICU・準夜・レジデントの当直表をまとめて自動生成します</p>
+                </div>
+                <button id="logoutBtn" class="text-xs text-blue-300 hover:text-white border border-blue-400 hover:border-white rounded px-3 py-1 transition-colors mt-1">
+                    ログアウト
+                </button>
+            </div>
+        </div>
+
+        <!-- 共通設定パネル -->
+        <div class="card card-blue p-5 mb-5">
+            <h2 class="text-base font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                <svg class="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                共通設定
+            </h2>
+            <div class="flex flex-wrap gap-6 items-center">
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-medium text-gray-600">対象年月</label>
+                    <input type="month" id="targetMonth"
+                        class="px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-medium text-gray-600">最大試行回数</label>
+                    <input type="number" id="maxRetries" value="200" min="1" max="200"
+                        class="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-medium text-gray-600">日当直合計上限</label>
+                    <input type="number" id="maxTotalDuties" value="6" min="1" max="31"
+                        class="w-16 px-2 py-1 border border-gray-300 rounded text-sm text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <div class="ml-auto flex gap-3">
+                    <button id="generateAllBtn"
+                        class="action-btn px-5 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5"
+                        disabled>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        全て作成
+                    </button>
+                    <button id="downloadAllBtn"
+                        class="action-btn px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5"
+                        disabled>
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        全てDL（ZIP）
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- タブバー -->
+        <div class="tab-bar">
+            <button class="tab-btn active" data-tab="icu" onclick="switchTab('icu')">
+                ICU当直
+                <span id="tab-badge-icu" class="tab-badge hidden"></span>
+            </button>
+            <button class="tab-btn" data-tab="junya" onclick="switchTab('junya')">
+                準夜当直
+                <span id="tab-badge-junya" class="tab-badge hidden"></span>
+            </button>
+            <button class="tab-btn" data-tab="resident" onclick="switchTab('resident')">
+                レジデント当直
+                <span id="tab-badge-resident" class="tab-badge hidden"></span>
+            </button>
+        </div>
+
+        <!-- タブコンテナ -->
+        <div class="tab-container mb-6">
+
+            <!-- ===== ICUタブ ===== -->
+            <div id="tab-icu" class="tab-content active">
+                <!-- ファイルアップロード -->
+                <div class="card card-green p-5 mb-4">
+                    <h2 class="text-base font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                        <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        ICU当直 - ファイルアップロード
+                    </h2>
+                    <div id="dropZone-icu"
+                        class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center justify-center min-h-[100px]">
+                        <svg class="h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <p class="text-sm text-gray-600">クリックまたはドラッグ&ドロップでファイルを選択</p>
+                        <p class="text-xs text-gray-400 mt-0.5">xlsx形式のみ対応</p>
+                        <input type="file" id="fileInput-icu" accept=".xlsx,.xls" class="hidden">
+                    </div>
+                    <div id="fileInfo-icu" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span id="fileName-icu"></span>
+                        <span class="text-gray-400" id="staffCount-icu"></span>
+                    </div>
+                    <div class="flex gap-3 mt-3">
+                        <button id="generateBtn-icu" disabled
+                            class="action-btn px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            シフト作成
+                        </button>
+                        <button id="downloadBtn-icu" disabled
+                            class="action-btn px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            ダウンロード
+                        </button>
+                    </div>
+                </div>
+                <!-- ローディング -->
+                <div id="loading-icu" class="panel-animated panel-hidden mb-4">
+                    <div class="flex items-center gap-3 text-sm text-gray-600 mb-2">
+                        <svg class="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        <span id="loadingText-icu">処理中...</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-bar-inner"></div></div>
+                </div>
+                <!-- 警告 -->
+                <div id="warningsPanel-icu" class="panel-animated panel-hidden mb-4">
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div class="flex items-start gap-2">
+                            <svg class="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                            </svg>
+                            <div>
+                                <h3 class="text-sm font-medium text-amber-800">警告</h3>
+                                <ul id="warningsList-icu" class="mt-1 text-xs text-amber-700 list-disc list-inside space-y-0.5"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- テーブル -->
+                <div id="tablePanel-icu" class="panel-animated panel-hidden card card-indigo p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-base font-semibold text-gray-700 flex items-center gap-1.5">
+                            <svg class="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            ICU当直表
+                        </h2>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <span class="shift-legend shift-tochoku">当直</span>
+                            <span class="shift-legend shift-nichoku">日直</span>
+                            <span class="shift-legend shift-fixed-cell">☓・出など（固定）</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="scheduleTable-icu" class="shift-table"></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== 準夜タブ ===== -->
+            <div id="tab-junya" class="tab-content">
+                <div class="card card-green p-5 mb-4">
+                    <h2 class="text-base font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                        <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        準夜当直 - ファイルアップロード
+                    </h2>
+                    <div id="dropZone-junya"
+                        class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center justify-center min-h-[100px]">
+                        <svg class="h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <p class="text-sm text-gray-600">クリックまたはドラッグ&ドロップでファイルを選択</p>
+                        <p class="text-xs text-gray-400 mt-0.5">xlsx形式のみ対応</p>
+                        <input type="file" id="fileInput-junya" accept=".xlsx,.xls" class="hidden">
+                    </div>
+                    <div id="fileInfo-junya" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span id="fileName-junya"></span>
+                        <span class="text-gray-400" id="staffCount-junya"></span>
+                    </div>
+                    <div class="flex gap-3 mt-3">
+                        <button id="generateBtn-junya" disabled
+                            class="action-btn px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            シフト作成
+                        </button>
+                        <button id="downloadBtn-junya" disabled
+                            class="action-btn px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            ダウンロード
+                        </button>
+                    </div>
+                </div>
+                <div id="loading-junya" class="panel-animated panel-hidden mb-4">
+                    <div class="flex items-center gap-3 text-sm text-gray-600 mb-2">
+                        <svg class="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        <span id="loadingText-junya">処理中...</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-bar-inner"></div></div>
+                </div>
+                <!-- 緊急割当パネル（junya/residentのみ） -->
+                <div id="emergencyPanel-junya" class="panel-animated panel-hidden mb-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-start gap-2">
+                            <svg class="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div>
+                                <h3 class="text-sm font-medium text-blue-800">緊急割当ルールを適用しました</h3>
+                                <p class="text-xs text-blue-700 mt-0.5">通常の中3日ルールでは当直を配置できない日があったため、中2日ルール（緊急割当）を使用しました。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="warningsPanel-junya" class="panel-animated panel-hidden mb-4">
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div class="flex items-start gap-2">
+                            <svg class="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                            </svg>
+                            <div>
+                                <h3 class="text-sm font-medium text-amber-800">警告</h3>
+                                <ul id="warningsList-junya" class="mt-1 text-xs text-amber-700 list-disc list-inside space-y-0.5"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tablePanel-junya" class="panel-animated panel-hidden card card-indigo p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-base font-semibold text-gray-700 flex items-center gap-1.5">
+                            <svg class="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            準夜当直表
+                        </h2>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <span class="shift-legend shift-tochoku">当直</span>
+                            <span class="shift-legend shift-nichoku">日直</span>
+                            <span class="shift-legend shift-fixed-cell">☓・出など（固定）</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="scheduleTable-junya" class="shift-table"></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== レジデントタブ ===== -->
+            <div id="tab-resident" class="tab-content">
+                <div class="card card-green p-5 mb-4">
+                    <h2 class="text-base font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
+                        <svg class="h-4 w-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        レジデント当直 - ファイルアップロード
+                    </h2>
+                    <div id="dropZone-resident"
+                        class="drop-zone border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors flex flex-col items-center justify-center min-h-[100px]">
+                        <svg class="h-8 w-8 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                        </svg>
+                        <p class="text-sm text-gray-600">クリックまたはドラッグ&ドロップでファイルを選択</p>
+                        <p class="text-xs text-gray-400 mt-0.5">xlsx形式のみ対応</p>
+                        <input type="file" id="fileInput-resident" accept=".xlsx,.xls" class="hidden">
+                    </div>
+                    <div id="fileInfo-resident" class="hidden mt-2 flex items-center gap-2 text-sm text-gray-600">
+                        <svg class="h-4 w-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span id="fileName-resident"></span>
+                        <span class="text-gray-400" id="staffCount-resident"></span>
+                    </div>
+                    <div class="flex gap-3 mt-3">
+                        <button id="generateBtn-resident" disabled
+                            class="action-btn px-5 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            シフト作成
+                        </button>
+                        <button id="downloadBtn-resident" disabled
+                            class="action-btn px-5 py-2.5 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed shadow-sm disabled:shadow-none flex items-center gap-1.5">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>
+                            ダウンロード
+                        </button>
+                    </div>
+                </div>
+                <div id="loading-resident" class="panel-animated panel-hidden mb-4">
+                    <div class="flex items-center gap-3 text-sm text-gray-600 mb-2">
+                        <svg class="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        <span id="loadingText-resident">処理中...</span>
+                    </div>
+                    <div class="progress-bar"><div class="progress-bar-inner"></div></div>
+                </div>
+                <!-- 緊急割当パネル -->
+                <div id="emergencyPanel-resident" class="panel-animated panel-hidden mb-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-start gap-2">
+                            <svg class="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div>
+                                <h3 class="text-sm font-medium text-blue-800">緊急割当ルールを適用しました</h3>
+                                <p class="text-xs text-blue-700 mt-0.5">通常の中3日ルールでは当直を配置できない日があったため、中2日ルール（緊急割当）を使用しました。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="warningsPanel-resident" class="panel-animated panel-hidden mb-4">
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div class="flex items-start gap-2">
+                            <svg class="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                            </svg>
+                            <div>
+                                <h3 class="text-sm font-medium text-amber-800">警告</h3>
+                                <ul id="warningsList-resident" class="mt-1 text-xs text-amber-700 list-disc list-inside space-y-0.5"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tablePanel-resident" class="panel-animated panel-hidden card card-indigo p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-base font-semibold text-gray-700 flex items-center gap-1.5">
+                            <svg class="h-4 w-4 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                            </svg>
+                            レジデント当直表
+                        </h2>
+                        <div class="flex flex-wrap gap-2 text-xs">
+                            <span class="shift-legend shift-tochoku">当直</span>
+                            <span class="shift-legend shift-nichoku">日直</span>
+                            <span class="shift-legend shift-fixed-cell">☓・出など（固定）</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table id="scheduleTable-resident" class="shift-table"></table>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tab-container -->
+
+        <!-- フッター -->
+        <div class="mt-8 text-center text-xs text-gray-400 border-t border-gray-200/50 pt-4">
+            <p>当直表 一括作成システム v1.0 &nbsp;|&nbsp; ICU / 準夜 / レジデント対応</p>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
