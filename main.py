@@ -112,7 +112,6 @@ class GenerateRequest(BaseModel):
     closed_flags: List[bool]
     max_total_duties: int = 6
     min_gap: int = 2
-    random_seed: int = 0
 
 
 class DownloadRequest(BaseModel):
@@ -237,7 +236,6 @@ async def generate(http_request: Request, shift_type: str, request: GenerateRequ
             total_limit=request.max_total_duties,
             min_gap=request.min_gap,
             config=config,
-            random_seed=request.random_seed,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"シフト生成中にエラーが発生しました: {str(e)}")

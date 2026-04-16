@@ -14,8 +14,6 @@ const SHIFT_TYPES = {
         fallbackMinGap: 1,
         hasEmergencyPanel: false,
         downloadFilename: "ICU当直表.xlsx",
-        phase1Label: "[中2日]",
-        phase2Label: "[中1日]",
     },
     junya: {
         name: "junya",
@@ -24,8 +22,6 @@ const SHIFT_TYPES = {
         fallbackMinGap: 2,
         hasEmergencyPanel: true,
         downloadFilename: "準夜当直表.xlsx",
-        phase1Label: "[中3日]",
-        phase2Label: "[中2日]",
     },
     resident: {
         name: "resident",
@@ -34,8 +30,6 @@ const SHIFT_TYPES = {
         fallbackMinGap: 2,
         hasEmergencyPanel: true,
         downloadFilename: "当直表.xlsx",
-        phase1Label: "[中3日]",
-        phase2Label: "[中2日]",
     },
 };
 
@@ -218,7 +212,6 @@ async function generateShift(type) {
     if (!s.uploadedData) return;
 
     const cfg = SHIFT_TYPES[type];
-    const maxRetries = Math.max(1, parseInt(document.getElementById("maxRetries").value) || 5);
     const maxTotalDuties = Math.max(1, parseInt(document.getElementById("maxTotalDuties").value) || 6);
     const numDays = s.uploadedData.dates.length;
 
@@ -229,8 +222,8 @@ async function generateShift(type) {
     let bestWarnings = null;
     let bestEmergencyUsed = false;
 
-    const callGenerate = async (minGap, attempt, total, phaseLabel) => {
-        el("loadingText", type).textContent = `${cfg.displayName} ${phaseLabel} 試行中... (${attempt} / ${total})`;
+    const callGenerate = async (minGap) => {
+        el("loadingText", type).textContent = `${cfg.displayName} 生成中...`;
         const res = await fetch(`/api/${type}/generate`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -244,7 +237,6 @@ async function generateShift(type) {
                 closed_flags: s.closedFlags,
                 max_total_duties: maxTotalDuties,
                 min_gap: minGap,
-                random_seed: attempt,
             }),
         });
         if (!res.ok) {
@@ -257,29 +249,20 @@ async function generateShift(type) {
     try {
         showLoading(type, true);
 
-        // Phase 1: デフォルトmin_gap
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            const result = await callGenerate(cfg.defaultMinGap, attempt, maxRetries, cfg.phase1Label);
-            const warnings = result.warnings || [];
-            if (bestWarnings === null || warnings.length < bestWarnings.length) {
-                bestSchedule = result.schedule;
-                bestWarnings = warnings;
-                bestEmergencyUsed = result.emergency_used || false;
-            }
-            if (warnings.length === 0) break;
-        }
+        // デフォルトmin_gapで生成
+        const result = await callGenerate(cfg.defaultMinGap);
+        bestSchedule = result.schedule;
+        bestWarnings = result.warnings || [];
+        bestEmergencyUsed = result.emergency_used || false;
 
-        // Phase 2: フォールバックmin_gapで再試行
-        if (bestWarnings && bestWarnings.length > 0) {
-            for (let attempt = 1; attempt <= maxRetries; attempt++) {
-                const result = await callGenerate(cfg.fallbackMinGap, attempt, maxRetries, cfg.phase2Label);
-                const warnings = result.warnings || [];
-                if (warnings.length < bestWarnings.length) {
-                    bestSchedule = result.schedule;
-                    bestWarnings = warnings;
-                    bestEmergencyUsed = result.emergency_used || false;
-                }
-                if (warnings.length === 0) break;
+        // 警告がある場合、フォールバックmin_gapで再試行
+        if (bestWarnings.length > 0) {
+            const fallbackResult = await callGenerate(cfg.fallbackMinGap);
+            const fallbackWarnings = fallbackResult.warnings || [];
+            if (fallbackWarnings.length < bestWarnings.length) {
+                bestSchedule = fallbackResult.schedule;
+                bestWarnings = fallbackWarnings;
+                bestEmergencyUsed = fallbackResult.emergency_used || false;
             }
         }
 
