@@ -33,7 +33,7 @@ SHIFT_CONFIGS: Dict[str, ShiftConfig] = {
         require_all_nichoku=True,
         nichoku_requires_tochoku_capacity=False,
         track_emergency=False,
-        nichoku_objective_weight=100,  # 日直充足を強く優先
+        nichoku_objective_weight=1,
     ),
     "junya": ShiftConfig(
         name="junya",
