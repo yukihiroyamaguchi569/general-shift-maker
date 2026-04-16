@@ -33,7 +33,7 @@ def generate_shift(
     num_days: int,
     holiday_flags: List[bool],
     closed_flags: List[bool],
-    total_limit: int = 6,
+    total_limits: List[int],
     min_gap: int = 2,
     config: Optional["ShiftConfig"] = None,
 ) -> Tuple[List[List[str]], List[str], bool]:
@@ -47,11 +47,14 @@ def generate_shift(
 
     num_staff = len(staff_ids)
 
-    # ディープコピー
-    sched = [row[:] for row in schedule]
+    # ディープコピー（当直希望 → 当直 に正規化）
+    sched = [
+        ["当直" if cell.strip() == "当直希望" else cell for cell in row]
+        for row in schedule
+    ]
 
     # 固定セルの判定
-    fixed = [[cell.strip() != "" for cell in row] for row in schedule]
+    fixed = [[cell.strip() != "" for cell in row] for row in sched]
 
     # 固定値から当直/日直カウントを先に集計（変数定義に使用）
     fixed_tochoku = [0] * num_staff
@@ -129,11 +132,11 @@ def generate_shift(
         if nichoku_days:
             model.add(sum(nichoku[s, d] for d in nichoku_days) <= day_limits[s])
 
-    # 制約4c: 日当直合計上限
+    # 制約4c: 日当直合計上限（スタッフごと）
     for s in range(num_staff):
         all_duties = [tochoku[s, d] for d in range(num_days)]
         all_duties += [nichoku[s, d] for d in nichoku_days]
-        model.add(sum(all_duties) <= total_limit)
+        model.add(sum(all_duties) <= total_limits[s])
 
     # 制約5: 日直は当直上限に達していないスタッフのみ（junya/resident）
     if nichoku_requires_capacity:
@@ -206,7 +209,7 @@ def generate_shift(
                 num_days=num_days,
                 holiday_flags=holiday_flags,
                 closed_flags=closed_flags,
-                total_limit=total_limit,
+                total_limits=total_limits,
                 min_gap=min_gap - 1,
                 config=config,
             )
@@ -251,9 +254,9 @@ def generate_shift(
                 f"職員{staff_ids[s]}: 日直{nichoku_counts[s]}回（上限{day_limits[s]}回）"
             )
         total = tochoku_counts[s] + nichoku_counts[s]
-        if total > total_limit:
+        if total > total_limits[s]:
             warnings.append(
-                f"職員{staff_ids[s]}: 日当直合計{total}回（上限{total_limit}回）"
+                f"職員{staff_ids[s]}: 日当直合計{total}回（上限{total_limits[s]}回）"
             )
 
         for d in range(num_days):
