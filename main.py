@@ -106,11 +106,11 @@ class GenerateRequest(BaseModel):
     staff_ids: List[str]
     day_limits: List[int]
     night_limits: List[int]
+    total_limits: List[int]
     dates: List[Any]
     schedule: List[List[str]]
     holiday_flags: List[bool]
     closed_flags: List[bool]
-    max_total_duties: int = 6
     min_gap: int = 2
 
 
@@ -118,6 +118,7 @@ class DownloadRequest(BaseModel):
     staff_ids: List[str]
     day_limits: List[int]
     night_limits: List[int]
+    total_limits: List[int]
     dates: List[Any]
     schedule: List[List[str]]
     closed_days: List[int]
@@ -233,7 +234,7 @@ async def generate(http_request: Request, shift_type: str, request: GenerateRequ
             num_days=num_days,
             holiday_flags=request.holiday_flags,
             closed_flags=request.closed_flags,
-            total_limit=request.max_total_duties,
+            total_limits=request.total_limits,
             min_gap=request.min_gap,
             config=config,
         )
@@ -256,6 +257,7 @@ async def download_excel(http_request: Request, shift_type: str, request: Downlo
             staff_ids=request.staff_ids,
             day_limits=request.day_limits,
             night_limits=request.night_limits,
+            total_limits=request.total_limits,
             dates=request.dates,
             schedule=request.schedule,
             closed_days=request.closed_days,
@@ -300,6 +302,7 @@ async def download_all(http_request: Request, request: DownloadAllRequest):
                     staff_ids=dl_req.staff_ids,
                     day_limits=dl_req.day_limits,
                     night_limits=dl_req.night_limits,
+                    total_limits=dl_req.total_limits,
                     dates=dl_req.dates,
                     schedule=dl_req.schedule,
                     closed_days=dl_req.closed_days,

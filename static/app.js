@@ -212,7 +212,6 @@ async function generateShift(type) {
     if (!s.uploadedData) return;
 
     const cfg = SHIFT_TYPES[type];
-    const maxTotalDuties = Math.max(1, parseInt(document.getElementById("maxTotalDuties").value) || 6);
     const numDays = s.uploadedData.dates.length;
 
     const holidaySet = new Set(holidayIndices);
@@ -235,7 +234,7 @@ async function generateShift(type) {
                 schedule: s.originalSchedule.map(row => [...row]),
                 holiday_flags: holidayFlagsArr,
                 closed_flags: s.closedFlags,
-                max_total_duties: maxTotalDuties,
+                total_limits: s.uploadedData.total_limits,
                 min_gap: minGap,
             }),
         });
@@ -334,6 +333,7 @@ async function downloadShift(type) {
                 staff_ids: s.uploadedData.staff_ids,
                 day_limits: s.uploadedData.day_limits,
                 night_limits: s.uploadedData.night_limits,
+                total_limits: s.uploadedData.total_limits,
                 dates: s.uploadedData.dates,
                 schedule: s.generatedSchedule,
                 closed_days: closedDaysArr,
@@ -366,6 +366,7 @@ async function downloadAll() {
             staff_ids: s.uploadedData.staff_ids,
             day_limits: s.uploadedData.day_limits,
             night_limits: s.uploadedData.night_limits,
+            total_limits: s.uploadedData.total_limits,
             dates: s.uploadedData.dates,
             schedule: s.generatedSchedule,
             closed_days: closedDaysArr,

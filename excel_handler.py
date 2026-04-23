@@ -34,11 +34,16 @@ def read_excel(file_bytes: bytes) -> Dict[str, Any]:
     """
     エクセルファイルを読み込んでJSON用の辞書を返す
 
+    フォーマット:
+      新: col1=日直上限, col2=当直上限, col3=合計上限, col4=職員番号, col5+=日付
+      旧: col1=日直上限, col2=当直上限, col3=職員番号, col4+=日付（後方互換）
+
     Returns:
         {
             "staff_ids": ["01", "02", ...],
-            "day_limits": [2, 0, ...],     # 日直回数上限
-            "night_limits": [4, 6, ...],   # 当直回数上限
+            "day_limits": [2, 0, ...],
+            "night_limits": [4, 6, ...],
+            "total_limits": [8, 6, ...],
             "dates": [1, 2, ..., 31],
             "schedule": [["", "☓", ...], ...],
             "closed_days": [],
@@ -47,10 +52,22 @@ def read_excel(file_bytes: bytes) -> Dict[str, Any]:
     wb = load_workbook(BytesIO(file_bytes), data_only=True)
     ws = wb.active
 
-    # 行1のD列（col=4）以降から日付を読む
-    date_col_start = 4
-    dates: List[Any] = []
+    # フォーマット検出: 行2のcol3が数値なら新フォーマット
+    new_format = False
+    for row_idx in range(2, ws.max_row + 1):
+        val = ws.cell(row_idx, 3).value
+        if val is not None and str(val).strip():
+            try:
+                int(str(val).strip())
+                new_format = True
+            except ValueError:
+                new_format = False
+            break
 
+    name_col = 4 if new_format else 3
+    date_col_start = 5 if new_format else 4
+
+    dates: List[Any] = []
     for col in range(date_col_start, ws.max_column + 1):
         val = ws.cell(1, col).value
         if val is None:
@@ -70,10 +87,11 @@ def read_excel(file_bytes: bytes) -> Dict[str, Any]:
     staff_ids: List[str] = []
     day_limits: List[int] = []
     night_limits: List[int] = []
+    total_limits: List[int] = []
     schedule: List[List[str]] = []
 
     for row_idx in range(2, ws.max_row + 1):
-        staff_id = ws.cell(row_idx, 3).value
+        staff_id = ws.cell(row_idx, name_col).value
         if staff_id is None or str(staff_id).strip() == "":
             continue
 
@@ -89,9 +107,19 @@ def read_excel(file_bytes: bytes) -> Dict[str, Any]:
         except (ValueError, TypeError):
             night_lim = 0
 
+        if new_format:
+            total_lim_val = ws.cell(row_idx, 3).value
+            try:
+                total_lim = int(total_lim_val) if total_lim_val is not None else 99
+            except (ValueError, TypeError):
+                total_lim = 99
+        else:
+            total_lim = 99
+
         staff_ids.append(str(staff_id).strip())
         day_limits.append(day_lim)
         night_limits.append(night_lim)
+        total_limits.append(total_lim)
 
         row_data: List[str] = []
         for col in range(date_col_start, date_col_start + num_date_cols):
@@ -106,22 +134,35 @@ def read_excel(file_bytes: bytes) -> Dict[str, Any]:
         "staff_ids": staff_ids,
         "day_limits": day_limits,
         "night_limits": night_limits,
+        "total_limits": total_limits,
         "dates": dates,
         "schedule": schedule,
-        "closed_days": [],  # 休診日はUIで管理
+        "closed_days": [],
     }
+
+
+def _detect_csv_format(rows: list) -> bool:
+    """3列目が数値なら新フォーマット（合計上限列あり）と判定"""
+    for row in rows[1:]:
+        if len(row) >= 3 and row[2].strip():
+            try:
+                int(row[2].strip())
+                return True
+            except ValueError:
+                return False
+    return False
 
 
 def read_csv(file_bytes: bytes) -> Dict[str, Any]:
     """
     CSVファイルを読み込んでJSON用の辞書を返す
 
-    CSVフォーマット（Excelと同一レイアウト）:
-      行1: ヘッダー（A: 日直回数上限, B: 当直回数上限, C: 職員番号, D以降: 日付）
-      行2以降: 職員データ
+    CSVフォーマット:
+      新: 日直回数上限, 当直回数上限, 合計上限, 職員番号, 日付...
+      旧: 日直回数上限, 当直回数上限, 職員番号, 日付...（後方互換）
 
     Returns:
-        read_excel() と同じ辞書構造
+        read_excel() と同じ辞書構造（total_limits を含む）
     """
     # utf-8 → cp932 の順でデコードを試みる
     text: str = ""
@@ -136,12 +177,17 @@ def read_csv(file_bytes: bytes) -> Dict[str, Any]:
     rows = list(reader)
 
     if not rows:
-        return {"staff_ids": [], "day_limits": [], "night_limits": [], "dates": [], "schedule": [], "closed_days": []}
+        return {"staff_ids": [], "day_limits": [], "night_limits": [], "total_limits": [], "dates": [], "schedule": [], "closed_days": []}
 
-    # 行1のD列（index 3）以降から日付を読む
+    # フォーマット検出
+    new_format = _detect_csv_format(rows)
+    name_col = 3 if new_format else 2
+    date_col_start = 4 if new_format else 3
+
+    # 日付列を読む
     header = rows[0]
     dates: List[Any] = []
-    for col in range(3, len(header)):
+    for col in range(date_col_start, len(header)):
         val = header[col].strip()
         if not val:
             break
@@ -160,12 +206,13 @@ def read_csv(file_bytes: bytes) -> Dict[str, Any]:
     staff_ids: List[str] = []
     day_limits: List[int] = []
     night_limits: List[int] = []
+    total_limits: List[int] = []
     schedule: List[List[str]] = []
 
     for row in rows[1:]:
-        if len(row) < 3:
+        if len(row) <= name_col:
             continue
-        staff_id = row[2].strip()
+        staff_id = row[name_col].strip()
         if not staff_id:
             continue
 
@@ -179,12 +226,21 @@ def read_csv(file_bytes: bytes) -> Dict[str, Any]:
         except (ValueError, TypeError):
             night_lim = 0
 
+        if new_format:
+            try:
+                total_lim = int(row[2].strip()) if row[2].strip() else 99
+            except (ValueError, TypeError):
+                total_lim = 99
+        else:
+            total_lim = 99
+
         staff_ids.append(staff_id)
         day_limits.append(day_lim)
         night_limits.append(night_lim)
+        total_limits.append(total_lim)
 
         row_data: List[str] = []
-        for col in range(3, 3 + num_date_cols):
+        for col in range(date_col_start, date_col_start + num_date_cols):
             val = row[col].strip() if col < len(row) else ""
             row_data.append(val)
         schedule.append(row_data)
@@ -193,6 +249,7 @@ def read_csv(file_bytes: bytes) -> Dict[str, Any]:
         "staff_ids": staff_ids,
         "day_limits": day_limits,
         "night_limits": night_limits,
+        "total_limits": total_limits,
         "dates": dates,
         "schedule": schedule,
         "closed_days": [],
@@ -203,6 +260,7 @@ def write_excel(
     staff_ids: List[str],
     day_limits: List[int],
     night_limits: List[int],
+    total_limits: List[int],
     dates: List[Any],
     schedule: List[List[str]],
     closed_days: List[int],
@@ -227,7 +285,7 @@ def write_excel(
     center_align = Alignment(horizontal="center", vertical="center")
 
     # 行1: ヘッダー
-    headers = ["日直回数上限", "当直回数上限", "職員番号"]
+    headers = ["日直回数上限", "当直回数上限", "合計上限", "職員番号"]
     for i, h in enumerate(headers):
         cell = ws.cell(1, i + 1, h)
         cell.font = header_font
@@ -238,9 +296,10 @@ def write_excel(
     ws.column_dimensions["A"].width = 12
     ws.column_dimensions["B"].width = 12
     ws.column_dimensions["C"].width = 10
+    ws.column_dimensions["D"].width = 10
 
     for i, date_val in enumerate(dates):
-        col = i + 4
+        col = i + 5
         cell = ws.cell(1, col, date_val)
         cell.font = header_font
         cell.fill = header_fill
@@ -262,13 +321,18 @@ def write_excel(
         cell.border = thin_border
         cell.alignment = center_align
 
-        cell = ws.cell(excel_row, 3, staff_id)
+        cell = ws.cell(excel_row, 3, total_limits[row_idx] if row_idx < len(total_limits) else 99)
+        cell.font = cell_font
+        cell.border = thin_border
+        cell.alignment = center_align
+
+        cell = ws.cell(excel_row, 4, staff_id)
         cell.font = cell_font
         cell.border = thin_border
         cell.alignment = center_align
 
         for col_idx, shift in enumerate(schedule[row_idx]):
-            col = col_idx + 4
+            col = col_idx + 5
             cell = ws.cell(excel_row, col, shift)
             cell.border = thin_border
             cell.alignment = center_align
@@ -291,8 +355,8 @@ def write_excel(
             else:
                 cell.font = cell_font
 
-    # フリーズペイン（1行目とC列を固定）
-    ws.freeze_panes = "D2"
+    # フリーズペイン（1行目とD列を固定）
+    ws.freeze_panes = "E2"
 
     buffer = BytesIO()
     wb.save(buffer)
